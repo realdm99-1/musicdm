@@ -359,10 +359,11 @@ Future<void> showMultiSelectTracksSheet(
     }
     return folderMap.entries.map((entry) {
       final name = p.basename(entry.key);
+      final sortedTracks = [...entry.value]..sort(compareTracksByFileName);
       return _FolderGroup(
         dirPath: entry.key,
         folderName: name.isEmpty ? entry.key : name,
-        tracks: entry.value,
+        tracks: sortedTracks,
       );
     }).toList()
       ..sort(
@@ -391,7 +392,8 @@ Future<void> showMultiSelectTracksSheet(
                     selectedIds.contains(t.id) &&
                     !existingAudioIds.contains(t.id),
               )
-              .toList();
+              .toList()
+            ..sort(compareTracksByFileName);
 
           final activeFolder = activeFolderPath == null
               ? null
@@ -412,7 +414,8 @@ Future<void> showMultiSelectTracksSheet(
             if (q.isEmpty) return true;
             return t.title.toLowerCase().contains(q) ||
                 t.artist.toLowerCase().contains(q);
-          }).toList();
+          }).toList()
+            ..sort(compareTracksByFileName);
 
           return SizedBox(
             height: MediaQuery.of(context).size.height * 0.85,

@@ -11,6 +11,39 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/audio/music_track.dart';
 
 const _kImportedPathsKey = 'musicdm_imported_mp3_paths';
+final _naturalTokenRegex = RegExp(r'(\d+|\D+)');
+
+/// Compares two file paths by their base filename using natural sort order
+/// (e.g. `1.mp3`, `2.mp3`, `10.mp3`).
+int compareFileNamesNatural(String pathA, String pathB) {
+  final nameA = p.basename(pathA).toLowerCase();
+  final nameB = p.basename(pathB).toLowerCase();
+  final tokensA = _naturalTokenRegex.allMatches(nameA).map((m) => m.group(0)!).toList();
+  final tokensB = _naturalTokenRegex.allMatches(nameB).map((m) => m.group(0)!).toList();
+  final len = tokensA.length < tokensB.length ? tokensA.length : tokensB.length;
+
+  for (var i = 0; i < len; i++) {
+    final segA = tokensA[i];
+    final segB = tokensB[i];
+    final numA = int.tryParse(segA);
+    final numB = int.tryParse(segB);
+    final cmp = (numA != null && numB != null)
+        ? numA.compareTo(numB)
+        : segA.compareTo(segB);
+    if (cmp != 0) return cmp;
+  }
+
+  final lenCmp = tokensA.length.compareTo(tokensB.length);
+  if (lenCmp != 0) return lenCmp;
+  return pathA.toLowerCase().compareTo(pathB.toLowerCase());
+}
+
+/// Compares two [MusicTrack] instances by their filename in natural order.
+int compareTracksByFileName(MusicTrack a, MusicTrack b) {
+  final sourceA = a.filePath.isNotEmpty ? a.filePath : a.title;
+  final sourceB = b.filePath.isNotEmpty ? b.filePath : b.title;
+  return compareFileNamesNatural(sourceA, sourceB);
+}
 
 enum AudioPermissionState {
   checking,
@@ -231,6 +264,7 @@ class TracksNotifier extends Notifier<TracksState> {
       ));
     }
 
+    importedEntries.sort((a, b) => compareFileNamesNatural(a.path, b.path));
     return _mergeLocalEntries(importedEntries);
   }
 
@@ -279,7 +313,8 @@ class TracksNotifier extends Notifier<TracksState> {
             title: p.basenameWithoutExtension(path),
           ),
         )
-        .toList();
+        .toList()
+      ..sort((a, b) => compareFileNamesNatural(a.path, b.path));
     final merged = await _mergeLocalEntries(entries);
     return (dirPath: dirPath, tracks: merged);
   }
